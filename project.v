@@ -52,8 +52,8 @@ module Proj(
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 	 
+
 	 reg [5:0] state;
-	 reg border_initing, paddle_initing, ball_initing, block_initing;
 	 reg [7:0] x, y;
 	 reg [7:0] p_x, p_y, b_x, b_y, bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x, bl_4_y, bl_5_x, bl_5_y, bl_6_x, bl_6_y, bl_7_x, bl_7_y, bl_8_x, bl_8_y, bl_9_x, bl_9_y, bl_10_x, bl_10_y;
 	 reg [2:0] colour;
@@ -99,10 +99,6 @@ module Proj(
 	assign LEDR[7] = ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd8));
 	always@(posedge CLOCK_50)
     	begin
-			border_initing = 1'b0;
-			paddle_initing = 1'b0;
-			ball_initing = 1'b0;
-			block_initing = 1'b0;
 			colour = 3'b000;
 			x = 8'b00000000;
 			y = 8'b00000000;
@@ -122,17 +118,17 @@ module Proj(
 				end
 				INIT_PADDLE: begin
 					if (draw_counter < 6'b10000) begin
-					p_x = 8'd76;
-					p_y = 8'd110;
-					x = p_x + draw_counter[3:0];
-					y = p_y + draw_counter[4];
-					draw_counter = draw_counter + 1'b1;
-					colour = 3'b111;
+						p_x = 8'd76;
+						p_y = 8'd110;
+						x = p_x + draw_counter[3:0];
+						y = p_y + draw_counter[4];
+						draw_counter = draw_counter + 1'b1;
+						colour = 3'b111;
 					end
-				else begin
-					draw_counter= 8'b00000000;
-					state = INIT_BALL;
-				end
+					else begin
+						draw_counter= 8'b00000000;
+						state = INIT_BALL;
+					end
 				end
 				INIT_BALL: begin
 					b_x = 8'd80;
