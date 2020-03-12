@@ -92,6 +92,7 @@ module proj(
 			INIT_BLOCK_4      	= 6'b000110,
 			INIT_BLOCK_5      	= 6'b000111,
 			IDLE              	= 6'b001000,
+			POST_IDLE			= 6'b011001,
 			ERASE_PADDLE	  	= 6'b001001,
 			UPDATE_PADDLE     	= 6'b001010,
 			DRAW_PADDLE 	  	= 6'b001011,
@@ -108,7 +109,7 @@ module proj(
 			DRAW_BLOCK_4      	= 6'b010110,
 			UPDATE_BLOCK_5    	= 6'b010111,
 			DRAW_BLOCK_5      	= 6'b011000,
-			DEAD			  	= 6'b011001;
+			DEAD			  	= 6'b011011;
 
 	// Instantiate a module to update the game 60 times each second
 	clock c0(
@@ -199,9 +200,9 @@ module proj(
 				IDLE: begin
 					// Frame is the rateDivider, when the rate divider hits 0, begin updating the game
 					if (frame)
-						state = ERASE_PADDLE;
+						state = POST_IDLE;
 				end
-				ERASE_PADDLE: begin
+				POST_IDLE: begin
 					lower_blocks = 1'b0;
 					if (timer_triggered) begin
 						lower_blocks = 1'b1;
@@ -212,6 +213,9 @@ module proj(
 							done_lowering = 1'b1;
 						end
 					end
+					state = ERASE_PADDLE;
+				end
+				ERASE_PADDLE: begin
 					if (draw_counter < 6'b100000) begin
 						x = p_x + draw_counter[3:0];
 						y = p_y + draw_counter[4];
