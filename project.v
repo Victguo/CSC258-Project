@@ -1,3 +1,7 @@
+// LEDR[5:0] displays the current state in the FSM
+// KEY[0] is the reset switch
+
+// ADDITIONAL TODO: Refactor the FSM code so its not just one whole module where the game runs?
 module Proj(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
@@ -52,61 +56,66 @@ module Proj(
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 	 
-	 reg [5:0] state;
-	 reg border_initing, paddle_initing, ball_initing, block_initing;
-	 reg [7:0] x, y;
-	 reg [7:0] p_x, p_y, b_x, b_y, bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x, bl_4_y, bl_5_x, bl_5_y, bl_6_x, bl_6_y, bl_7_x, bl_7_y, bl_8_x, bl_8_y, bl_9_x, bl_9_y, bl_10_x, bl_10_y;
-	 reg [2:0] colour;
-	 reg b_x_direction, b_y_direction;
-	 reg [17:0] draw_counter;
-	 reg [2:0] block_1_colour, block_2_colour, block_3_colour, block_4_colour, block_5_colour, block_6_colour, block_7_colour, block_8_colour, block_9_colour, block_10_colour;
-	 wire frame;
-	 
-	 assign LEDR[5:0] = state;
-	 
-	 localparam RESET_BLACK       = 6'b000000,
-                INIT_PADDLE       = 6'b000001,
-                INIT_BALL         = 6'b000010,
-                INIT_BLOCK_1      = 6'b000011,
-				INIT_BLOCK_2      = 6'b000100,
-				INIT_BLOCK_3      = 6'b000101,
-				INIT_BLOCK_4      = 6'b000110,
-				INIT_BLOCK_5      = 6'b000111,
-                IDLE              = 6'b001000,
-				ERASE_PADDLE	  = 6'b001001,
-                UPDATE_PADDLE     = 6'b001010,
-				DRAW_PADDLE 	  = 6'b001011,
-                ERASE_BALL        = 6'b001100,
-				UPDATE_BALL       = 6'b001101,
-				DRAW_BALL         = 6'b001110,
-				UPDATE_BLOCK_1    = 6'b001111,
-				DRAW_BLOCK_1      = 6'b010000,
-				UPDATE_BLOCK_2    = 6'b010001,
-				DRAW_BLOCK_2      = 6'b010010,
-				UPDATE_BLOCK_3    = 6'b010011,
-				DRAW_BLOCK_3      = 6'b010100,
-				UPDATE_BLOCK_4    = 6'b010101,
-				DRAW_BLOCK_4      = 6'b010110,
-				UPDATE_BLOCK_5    = 6'b010111,
-				DRAW_BLOCK_5      = 6'b011000,
-				DEAD    		  = 6'b011001;
 
+	reg [5:0] state;
+	// Set of x and y coordinates that are directly sent to the VGA to draw/update, note that x and y have to constantly swap between
+	// paddle, ball, and blocks
+	reg [7:0] x, y;
+	// Coordinates for each object on the screen, currently has 5 block coordinate vars, can add more if needed.
+	reg [7:0] p_x, p_y, b_x, b_y, bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x, bl_4_y, bl_5_x, bl_5_y;
+	reg [2:0] colour;
+	// 1 bit vars to keep track of which direction (up down, left right) the ball is heading
+	reg b_x_direction, b_y_direction;
+	reg [17:0] draw_counter;
+	reg [2:0] block_1_colour, block_2_colour, block_3_colour, block_4_colour, block_5_colour;
+	// Better name, or the more familiar name that we have for this is the "enable" in LAB4, is 1 when rate_divider == 0
+	wire frame;
+	
+	assign LEDR[5:0] = state;
+	 
+	// States in the FSM
+	localparam RESET_BLACK       = 6'b000000,
+			INIT_PADDLE       = 6'b000001,
+			INIT_BALL         = 6'b000010,
+			INIT_BLOCK_1      = 6'b000011,
+			INIT_BLOCK_2      = 6'b000100,
+			INIT_BLOCK_3      = 6'b000101,
+			INIT_BLOCK_4      = 6'b000110,
+			INIT_BLOCK_5      = 6'b000111,
+			IDLE              = 6'b001000,
+			ERASE_PADDLE	  = 6'b001001,
+			UPDATE_PADDLE     = 6'b001010,
+			DRAW_PADDLE 	  = 6'b001011,
+			ERASE_BALL        = 6'b001100,
+			UPDATE_BALL       = 6'b001101,
+			DRAW_BALL         = 6'b001110,
+			UPDATE_BLOCK_1    = 6'b001111,
+			DRAW_BLOCK_1      = 6'b010000,
+			UPDATE_BLOCK_2    = 6'b010001,
+			DRAW_BLOCK_2      = 6'b010010,
+			UPDATE_BLOCK_3    = 6'b010011,
+			DRAW_BLOCK_3      = 6'b010100,
+			UPDATE_BLOCK_4    = 6'b010101,
+			DRAW_BLOCK_4      = 6'b010110,
+			UPDATE_BLOCK_5    = 6'b010111,
+			DRAW_BLOCK_5      = 6'b011000,
+			DEAD    		  = 6'b011001;
+
+	// Instantiate a module to update the game 60 times each second
 	clock c0(
 		.clock(CLOCK_50), 
 		.clk(frame)
 		);
 
 	assign LEDR[7] = ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd8));
+
 	always@(posedge CLOCK_50)
     	begin
-			border_initing = 1'b0;
-			paddle_initing = 1'b0;
-			ball_initing = 1'b0;
-			block_initing = 1'b0;
 			colour = 3'b000;
 			x = 8'b00000000;
 			y = 8'b00000000;
-			if (~KEY[0]) state = RESET_BLACK;
+			if (~KEY[0]) 
+				state = RESET_BLACK;
 			// FSM
 			case (state)
 				RESET_BLACK: begin
@@ -120,27 +129,28 @@ module Proj(
 						state = INIT_PADDLE;
 					end
 				end
+				// Whole lotta initialization here
 				INIT_PADDLE: begin
 					if (draw_counter < 6'b10000) begin
-					p_x = 8'd76;
-					p_y = 8'd110;
-					x = p_x + draw_counter[3:0];
-					y = p_y + draw_counter[4];
-					draw_counter = draw_counter + 1'b1;
-					colour = 3'b111;
+						p_x = 8'd76;
+						p_y = 8'd110;
+						x = p_x + draw_counter[3:0];
+						y = p_y + draw_counter[4];
+						draw_counter = draw_counter + 1'b1;
+						colour = 3'b111;
 					end
-				else begin
-					draw_counter= 8'b00000000;
-					state = INIT_BALL;
-				end
+					else begin
+						draw_counter= 8'b00000000;
+						state = INIT_BALL;
+					end
 				end
 				INIT_BALL: begin
 					b_x = 8'd80;
 					b_y = 8'd108;
-						x = b_x;
-						y = b_y;
-						colour = 3'b111;
-						state = INIT_BLOCK_1;
+					x = b_x;
+					y = b_y;
+					colour = 3'b111;
+					state = INIT_BLOCK_1;
 				end
 				INIT_BLOCK_1: begin
 					bl_1_x = 8'd15;
@@ -173,9 +183,10 @@ module Proj(
 						state = IDLE;
 				end
 				IDLE: begin
-				if (frame)
-					state = ERASE_PADDLE;
-				end
+					// Frame is the rateDivider, when the rate divider hits 0, begin updating the game
+					if (frame)
+						state = ERASE_PADDLE;
+					end
 				ERASE_PADDLE: begin
 					if (draw_counter < 6'b100000) begin
 						x = p_x + draw_counter[3:0];
@@ -196,23 +207,24 @@ module Proj(
 					state = DRAW_PADDLE;
 				end
 				DRAW_PADDLE: begin
-				if (draw_counter < 6'b100000) begin
-					x = p_x + draw_counter[3:0];
-					y = p_y + draw_counter[4];
-					draw_counter = draw_counter + 1'b1;
-					colour = 3'b111;
+					if (draw_counter < 6'b100000) begin
+						x = p_x + draw_counter[3:0];
+						y = p_y + draw_counter[4];
+						draw_counter = draw_counter + 1'b1;
+						colour = 3'b111;
 					end
-				else begin
-					draw_counter= 8'b00000000;
-					state = ERASE_BALL;
-				end
+					else begin
+						draw_counter= 8'b00000000;
+						state = ERASE_BALL;
+					end
 				end
 				ERASE_BALL: begin
-				x = b_x;
+					x = b_x;
 					y = b_y;
 					state = UPDATE_BALL;
 				end
 				UPDATE_BALL: begin
+					// Move the ball by incrementing its direction
 					if (~b_x_direction) 
 						b_x = b_x + 1'b1;
 					else 
@@ -223,28 +235,40 @@ module Proj(
 					else 
 						b_y = b_y - 1'b1;
 
+					// Screen is 160px wide (x), therefore reverse x's direction if we hit a boundary
 					if ((b_x == 8'd0) || (b_x == 8'd160)) 
 						b_x_direction = ~b_x_direction;
-		
+					
+					// Check if we hit the paddle, this is where we need to increment the counter
 					if ((b_y == 8'd0) || ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd15)))
 						b_y_direction = ~b_y_direction;
-					if (b_y >= 8'd120) state = DEAD;
-					else state = DRAW_BALL;
+					// If we hit the bottom of the screen, the ball is dead, else continue drawing the ball
+					if (b_y >= 8'd120) 
+						state = DEAD;
+					else 
+						state = DRAW_BALL;
 				end
+				// Just updating the ball's coordinates here, nothing special
 				DRAW_BALL: begin
 					x = b_x;
 					y = b_y;
 					colour = 3'b111;
 					state = UPDATE_BLOCK_1;
 				end
+				// TODO: THIS IS WHERE WE SHOULD REDRAW THE BLOCKS BY UPDATING THEIR Y COORD TO GO DOWN
 				UPDATE_BLOCK_1: begin
+					// Unit collision code
+					// If the block's colour is not black, means it is still active, then check if the ball is inside the block's boundaries
 					if ((block_1_colour != 3'b000) && (b_y > bl_1_y - 8'd1) && (b_y < bl_1_y + 8'd2) && (b_x >= bl_1_x) && (b_x <= bl_1_x + 8'd7)) begin
+						// If collision detected, block should be set the black, meaning its been hit
 						b_y_direction = ~b_y_direction;
 						block_1_colour = 3'b000;
+						// NOTE: WITH THIS CODE, WE CAN EASILY SET UP BLOCKS TO TAKE MULTIPLE HITS, BY CHANGING THE COLOUR
 					end
 					state = DRAW_BLOCK_1;
 				end
 				DRAW_BLOCK_1: begin
+					// draw counter represents the loop to fill the block's rectangle
 					if (draw_counter < 5'b10000) begin
 						x = bl_1_x + draw_counter[2:0];
 						y = bl_1_y + draw_counter[3];
@@ -340,8 +364,8 @@ module Proj(
 						colour = 3'b100;
 					end
 				end
-         endcase
-    end
+         	endcase
+    	end
 endmodule
 
 module clock(input clock, output clk);
@@ -350,8 +374,9 @@ module clock(input clock, output clk);
 	always@(posedge clock)
     begin
         if (frame_counter == 20'b00000000000000000000) begin
-		  frame_counter = 20'b11001011011100110100;
-		  frame = 1'b1;
+			// This is the number 833,332 - meaning with a 50MHz clock, frame is set to 1 60 times, VGA is updating at 60hz
+			frame_counter = 20'b11001011011100110100;
+			frame = 1'b1;
 		end
         else begin
 			frame_counter = frame_counter - 1'b1;
