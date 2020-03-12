@@ -102,6 +102,7 @@ module proj(
 			ERASE_BLOCK_1		= 6'b011111,
 			DRAW_BLOCK_1      	= 6'b010000,
 			UPDATE_BLOCK_2    	= 6'b010001,
+			ERASE_BLOCK_2		= 6'b110000,
 			DRAW_BLOCK_2      	= 6'b010010,
 			UPDATE_BLOCK_3    	= 6'b010011,
 			DRAW_BLOCK_3      	= 6'b010100,
@@ -133,7 +134,6 @@ module proj(
 					lower_blocks = 1'b0;
 					timer_triggered = 1'b0;
 					done_lowering = 1'b0;
-					yeet = 1'b0;
 					if (draw_counter < 17'b10000000000000000) begin
 						x = draw_counter[7:0];
 						y = draw_counter[16:8];
@@ -204,7 +204,7 @@ module proj(
 				end
 				POST_IDLE: begin
 					lower_blocks = 1'b0;
-					if (timer_triggered) begin
+					if (timer_triggered && (done_lowering != 1'b1)) begin
 						lower_blocks = 1'b1;
 						counter = counter - 1'b1;
 
@@ -308,7 +308,7 @@ module proj(
 					end
 					// Trying 10 pixels for now
 					if(lower_blocks == 1'b1)
-						temp_y = bl_1_y + 5'b10100;
+						temp_y = bl_1_y + 5'b1;
 
 					state = ERASE_BLOCK_1;
 				end
@@ -346,10 +346,23 @@ module proj(
 					end
 					// Trying 10 pixels for now
 					if(lower_blocks == 1'b1)
-						bl_2_y = bl_2_y + 5'b10100;
-					state = DRAW_BLOCK_2;
+						temp_y = bl_2_y + 5'b00001;
+					state = ERASE_BLOCK_2;
+				end
+				ERASE_BLOCK_2: begin
+					if (draw_counter < 5'b10000) begin
+						x = bl_2_x + draw_counter[2:0];
+						y = bl_2_y + draw_counter[3];
+						draw_counter = draw_counter + 1'b1;
+					end
+					else begin
+						draw_counter= 8'b00000000;
+						state = DRAW_BLOCK_2;
+					end
 				end
 				DRAW_BLOCK_2: begin
+					if(lower_blocks == 1'b1)
+						bl_2_y = temp_y;
 					if (draw_counter < 5'b10000) begin
 						x = bl_2_x + draw_counter[2:0];
 						y = bl_2_y + draw_counter[3];
