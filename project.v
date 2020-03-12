@@ -1,3 +1,4 @@
+// LEDR[5:0] displays the current state in the FSM
 module Proj(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
@@ -102,7 +103,8 @@ module Proj(
 			colour = 3'b000;
 			x = 8'b00000000;
 			y = 8'b00000000;
-			if (~KEY[0]) state = RESET_BLACK;
+			if (~KEY[0]) 
+				state = RESET_BLACK;
 			// FSM
 			case (state)
 				RESET_BLACK: begin
@@ -133,10 +135,10 @@ module Proj(
 				INIT_BALL: begin
 					b_x = 8'd80;
 					b_y = 8'd108;
-						x = b_x;
-						y = b_y;
-						colour = 3'b111;
-						state = INIT_BLOCK_1;
+					x = b_x;
+					y = b_y;
+					colour = 3'b111;
+					state = INIT_BLOCK_1;
 				end
 				INIT_BLOCK_1: begin
 					bl_1_x = 8'd15;
@@ -169,9 +171,9 @@ module Proj(
 						state = IDLE;
 				end
 				IDLE: begin
-				if (frame)
-					state = ERASE_PADDLE;
-				end
+					if (frame)
+						state = ERASE_PADDLE;
+					end
 				ERASE_PADDLE: begin
 					if (draw_counter < 6'b100000) begin
 						x = p_x + draw_counter[3:0];
@@ -192,23 +194,24 @@ module Proj(
 					state = DRAW_PADDLE;
 				end
 				DRAW_PADDLE: begin
-				if (draw_counter < 6'b100000) begin
-					x = p_x + draw_counter[3:0];
-					y = p_y + draw_counter[4];
-					draw_counter = draw_counter + 1'b1;
-					colour = 3'b111;
+					if (draw_counter < 6'b100000) begin
+						x = p_x + draw_counter[3:0];
+						y = p_y + draw_counter[4];
+						draw_counter = draw_counter + 1'b1;
+						colour = 3'b111;
 					end
-				else begin
-					draw_counter= 8'b00000000;
-					state = ERASE_BALL;
-				end
+					else begin
+						draw_counter= 8'b00000000;
+						state = ERASE_BALL;
+					end
 				end
 				ERASE_BALL: begin
-				x = b_x;
+					x = b_x;
 					y = b_y;
 					state = UPDATE_BALL;
 				end
 				UPDATE_BALL: begin
+					// Move the ball by incrementing its direction
 					if (~b_x_direction) 
 						b_x = b_x + 1'b1;
 					else 
@@ -219,14 +222,20 @@ module Proj(
 					else 
 						b_y = b_y - 1'b1;
 
+					// Screen is 160px wide (x), therefore reverse x's direction if we hit a boundary
 					if ((b_x == 8'd0) || (b_x == 8'd160)) 
 						b_x_direction = ~b_x_direction;
-		
+					
+					// Check if we hit the paddle, this is where we need to increment the counter
 					if ((b_y == 8'd0) || ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd15)))
 						b_y_direction = ~b_y_direction;
-					if (b_y >= 8'd120) state = DEAD;
-					else state = DRAW_BALL;
+					// If we hit the bottom of the screen, the ball is dead, else continue drawing the ball
+					if (b_y >= 8'd120) 
+						state = DEAD;
+					else 
+						state = DRAW_BALL;
 				end
+				// Just updating the ball's coordinates here, nothing special
 				DRAW_BALL: begin
 					x = b_x;
 					y = b_y;
