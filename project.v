@@ -70,36 +70,43 @@ module Proj(
 	reg [2:0] block_1_colour, block_2_colour, block_3_colour, block_4_colour, block_5_colour;
 	// Better name, or the more familiar name that we have for this is the "enable" in LAB4, is 1 when rate_divider == 0
 	wire frame;
+
+	// WEEK 1 CODE
+	// Counter var, that lets us know when to start lowering the blocks in the game
+	reg [1:0] counter;
+	// 1 bit flag var, to let us know when we can stop decrementing
+	reg lower_blocks;
+	reg timer_triggered;
 	
 	assign LEDR[5:0] = state;
 	 
 	// States in the FSM
-	localparam RESET_BLACK       = 6'b000000,
-			INIT_PADDLE       = 6'b000001,
-			INIT_BALL         = 6'b000010,
-			INIT_BLOCK_1      = 6'b000011,
-			INIT_BLOCK_2      = 6'b000100,
-			INIT_BLOCK_3      = 6'b000101,
-			INIT_BLOCK_4      = 6'b000110,
-			INIT_BLOCK_5      = 6'b000111,
-			IDLE              = 6'b001000,
-			ERASE_PADDLE	  = 6'b001001,
-			UPDATE_PADDLE     = 6'b001010,
-			DRAW_PADDLE 	  = 6'b001011,
-			ERASE_BALL        = 6'b001100,
-			UPDATE_BALL       = 6'b001101,
-			DRAW_BALL         = 6'b001110,
-			UPDATE_BLOCK_1    = 6'b001111,
-			DRAW_BLOCK_1      = 6'b010000,
-			UPDATE_BLOCK_2    = 6'b010001,
-			DRAW_BLOCK_2      = 6'b010010,
-			UPDATE_BLOCK_3    = 6'b010011,
-			DRAW_BLOCK_3      = 6'b010100,
-			UPDATE_BLOCK_4    = 6'b010101,
-			DRAW_BLOCK_4      = 6'b010110,
-			UPDATE_BLOCK_5    = 6'b010111,
-			DRAW_BLOCK_5      = 6'b011000,
-			DEAD    		  = 6'b011001;
+	localparam RESET_BLACK    	= 6'b000000,
+			INIT_PADDLE       	= 6'b000001,
+			INIT_BALL         	= 6'b000010,
+			INIT_BLOCK_1      	= 6'b000011,
+			INIT_BLOCK_2      	= 6'b000100,
+			INIT_BLOCK_3      	= 6'b000101,
+			INIT_BLOCK_4      	= 6'b000110,
+			INIT_BLOCK_5      	= 6'b000111,
+			IDLE              	= 6'b001000,
+			ERASE_PADDLE	  	= 6'b001001,
+			UPDATE_PADDLE     	= 6'b001010,
+			DRAW_PADDLE 	  	= 6'b001011,
+			ERASE_BALL        	= 6'b001100,
+			UPDATE_BALL       	= 6'b001101,
+			DRAW_BALL         	= 6'b001110,
+			UPDATE_BLOCK_1    	= 6'b001111,
+			DRAW_BLOCK_1      	= 6'b010000,
+			UPDATE_BLOCK_2    	= 6'b010001,
+			DRAW_BLOCK_2      	= 6'b010010,
+			UPDATE_BLOCK_3    	= 6'b010011,
+			DRAW_BLOCK_3      	= 6'b010100,
+			UPDATE_BLOCK_4    	= 6'b010101,
+			DRAW_BLOCK_4      	= 6'b010110,
+			UPDATE_BLOCK_5    	= 6'b010111,
+			DRAW_BLOCK_5      	= 6'b011000,
+			DEAD			  	= 6'b011001;
 
 	// Instantiate a module to update the game 60 times each second
 	clock c0(
@@ -114,6 +121,9 @@ module Proj(
 			colour = 3'b000;
 			x = 8'b00000000;
 			y = 8'b00000000;
+			counter = 2'b00;
+			lower_blocks = 1'b0;
+			timer_triggered = 1'b0;
 			if (~KEY[0]) 
 				state = RESET_BLACK;
 			// FSM
@@ -184,9 +194,17 @@ module Proj(
 				end
 				IDLE: begin
 					// Frame is the rateDivider, when the rate divider hits 0, begin updating the game
+					lower_blocks = 1'b0;
 					if (frame)
 						state = ERASE_PADDLE;
+					if (timer_triggered) begin
+						lower_blocks = 1'b1;
+						counter = counter - 1'b1;
+
+						if(counter == 1'b0)
+							timer_triggered = 1'b0;
 					end
+				end
 				ERASE_PADDLE: begin
 					if (draw_counter < 6'b100000) begin
 						x = p_x + draw_counter[3:0];
@@ -240,8 +258,15 @@ module Proj(
 						b_x_direction = ~b_x_direction;
 					
 					// Check if we hit the paddle, this is where we need to increment the counter
-					if ((b_y == 8'd0) || ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd15)))
+					if ((b_y == 8'd0) || ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd15))) begin
 						b_y_direction = ~b_y_direction;
+
+						if((counter < 2'b11) && (timer_triggered == 1'b0))
+							counter = counter + 1'b1;
+						else begin
+							timer_triggered = 1'b1;
+						end
+					end
 					// If we hit the bottom of the screen, the ball is dead, else continue drawing the ball
 					if (b_y >= 8'd120) 
 						state = DEAD;
@@ -265,6 +290,10 @@ module Proj(
 						block_1_colour = 3'b000;
 						// NOTE: WITH THIS CODE, WE CAN EASILY SET UP BLOCKS TO TAKE MULTIPLE HITS, BY CHANGING THE COLOUR
 					end
+					// Trying 10 pixels for now
+					if((counter > 2'b00) && (lower_blocks == 1'b1))
+						bl_1_y = bl_1_y + 4'b1010;
+
 					state = DRAW_BLOCK_1;
 				end
 				DRAW_BLOCK_1: begin
@@ -285,6 +314,9 @@ module Proj(
 						b_y_direction = ~b_y_direction;
 						block_2_colour = 3'b000;
 					end
+					// Trying 10 pixels for now
+					if((counter > 2'b00) && (lower_blocks == 1'b1))
+						bl_2_y = bl_2_y + 4'b1010;
 					state = DRAW_BLOCK_2;
 				end
 				DRAW_BLOCK_2: begin
@@ -304,6 +336,10 @@ module Proj(
 						b_y_direction = ~b_y_direction;
 						block_3_colour = 3'b000;
 					end
+					// Trying 10 pixels for now
+					if((counter > 2'b00) && (lower_blocks == 1'b1))
+						bl_3_y = bl_3_y + 4'b1010;
+
 					state = DRAW_BLOCK_3;
 				end
 				DRAW_BLOCK_3: begin
@@ -323,6 +359,10 @@ module Proj(
 						b_y_direction = ~b_y_direction;
 						block_4_colour = 3'b000;
 					end
+					// Trying 10 pixels for now
+					if((counter > 2'b00) && (lower_blocks == 1'b1))
+						bl_4_y = bl_4_y + 4'b1010;
+
 					state = DRAW_BLOCK_4;
 				end
 				DRAW_BLOCK_4: begin
@@ -342,6 +382,10 @@ module Proj(
 						b_y_direction = ~b_y_direction;
 						block_5_colour = 3'b000;
 					end
+					// Trying 10 pixels for now
+					if((counter > 2'b00) && (lower_blocks == 1'b1))
+						bl_5_y = bl_5_y + 4'b1010;
+
 					state = DRAW_BLOCK_5;
 				end
 				DRAW_BLOCK_5: begin
