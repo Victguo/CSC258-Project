@@ -78,8 +78,7 @@ module proj(
 	reg lower_blocks;
 	reg timer_triggered;
 	reg done_lowering;
-	reg yeet;
-
+	reg [7:0] temp_y;
 	assign LEDR[5:0] = state;
 	 
 	// States in the FSM
@@ -100,6 +99,7 @@ module proj(
 			UPDATE_BALL       	= 6'b001101,
 			DRAW_BALL         	= 6'b001110,
 			UPDATE_BLOCK_1    	= 6'b001111,
+			ERASE_BLOCK_1		= 6'b011111,
 			DRAW_BLOCK_1      	= 6'b010000,
 			UPDATE_BLOCK_2    	= 6'b010001,
 			DRAW_BLOCK_2      	= 6'b010010,
@@ -276,13 +276,11 @@ module proj(
 
 						if((counter < 2'b11) && (timer_triggered == 1'b0) && (done_lowering == 1'b0)) begin
 							counter = counter + 1'b1;
-							yeet = 1'b1;
 							if(counter == 2'b11)
 								timer_triggered = 1'b1;
 						end
 						else begin
 							timer_triggered = 1'b1;
-							yeet = 1'b1;
 						end
 					end
 					// If we hit the bottom of the screen, the ball is dead, else continue drawing the ball
@@ -310,12 +308,26 @@ module proj(
 					end
 					// Trying 10 pixels for now
 					if(lower_blocks == 1'b1)
-						bl_1_y = bl_1_y + 5'b10100;
+						temp_y = bl_1_y + 5'b10100;
 
-					state = DRAW_BLOCK_1;
+					state = ERASE_BLOCK_1;
+				end
+				ERASE_BLOCK_1: begin
+					if (draw_counter < 5'b10000) begin
+						x = bl_1_x + draw_counter[2:0];
+						y = bl_1_y + draw_counter[3];
+						draw_counter = draw_counter + 1'b1;
+					end
+					else begin
+						draw_counter= 8'b00000000;
+						state = DRAW_BLOCK_1;
+					end
 				end
 				DRAW_BLOCK_1: begin
 					// draw counter represents the loop to fill the block's rectangle
+					if(lower_blocks == 1'b1)
+						bl_1_y = temp_y;
+
 					if (draw_counter < 5'b10000) begin
 						x = bl_1_x + draw_counter[2:0];
 						y = bl_1_y + draw_counter[3];
