@@ -2,7 +2,7 @@
 // KEY[0] is the reset switch
 
 // ADDITIONAL TODO: Refactor the FSM code so its not just one whole module where the game runs?
-module Proj(
+module proj(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
         KEY,
@@ -58,6 +58,7 @@ module Proj(
 	 
 
 	reg [5:0] state;
+	reg [3:0] state2;
 	// Set of x and y coordinates that are directly sent to the VGA to draw/update, note that x and y have to constantly swap between
 	// paddle, ball, and blocks
 	reg [7:0] x, y;
@@ -70,7 +71,11 @@ module Proj(
 	reg [2:0] block_1_colour, block_2_colour, block_3_colour, block_4_colour, block_5_colour;
 	// Better name, or the more familiar name that we have for this is the "enable" in LAB4, is 1 when rate_divider == 0
 	wire frame;
-	
+	// store coordinates reading from text
+	wire [79:0] data;
+    wire i;
+	wire [3:0] done_reading;
+
 	assign LEDR[5:0] = state;
 	 
 	// States in the FSM
@@ -106,6 +111,29 @@ module Proj(
 		.clock(CLOCK_50), 
 		.clk(frame)
 		);
+
+    read_text t1(
+		.clock(CLOCK_50),
+		.reset(resetn),
+		.out(data)
+	);
+
+    new_blocks new1(.bl_1_x(bl_1_x),
+	                .bl_1_y(bl_1_y),
+					.bl_2_x(bl_2_x), 
+					.bl_2_y(bl_2_y), 
+					.bl_3_x(bl_3_x), 
+					.bl_3_y(bl_3_y), 
+					.bl_4_x(bl_4_x), 
+					.bl_4_y(bl_4_y), 
+					.bl_5_x(bl_5_x), 
+					.bl_5_y(bl_5_y),
+					.clock(CLOCK_50),
+					.state2(state2),
+					.i(i),
+					.done_reading(done_reading),
+					.data(data)
+	               );
 
 	assign LEDR[7] = ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd8));
 
@@ -386,3 +414,113 @@ module clock(input clock, output clk);
 	assign clk = frame;
 endmodule
 
+module new_blocks(clock, bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x, bl_4_y, bl_5_x, bl_5_y, state2, i, data);
+	input clock;
+	input [79:0] data;
+	input i;
+	input [3:0] state2;
+	output [7:0] bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x,bl_4_y, bl_5_x, bl_5_y;
+
+	// States in the FSM
+	localparam 
+	           LD_BL_1_X = 4'b0001,
+			   LD_BL_1_Y = 4'b0010,
+			   LD_BL_2_X = 4'b0011,
+			   LD_BL_2_Y = 4'b0100,
+			   LD_BL_3_X = 4'b0101,
+			   LD_BL_3_Y = 4'b0110,
+			   LD_BL_4_X = 4'b0111,
+			   LD_BL_4_Y = 4'b1000,
+			   LD_BL_5_X = 4'b1001,
+			   LD_BL_5_Y = 4'b1010,
+	           FINISH_READING = 4'b1011;
+
+always@(posedge clock) begin
+	if(i == 1'b0) begin
+		case (state2)
+
+			LD_BL_1_X: begin
+			bl_1_x <= data [7:0];
+			state2 = LD_BL_1_Y;
+			end
+
+			LD_BL_1_Y: begin 
+			bl_1_y = data [15:8];
+			state2 = LD_BL_2_X;
+			end 
+
+			LD_BL_2_X: begin
+			bl_2_x = data [23:16];
+			state2 = LD_BL_2_Y;
+			end
+
+			LD_BL_2_Y: begin
+			bl_2_y = data [31:24];
+			state2 = LD_BL_3_X;
+			end
+
+			LD_BL_3_X: begin
+			bl_3_x = data [39:32];
+			state2 = LD_BL_3_Y;
+			end 
+
+			LD_BL_3_Y: begin
+			bl_3_y = data [47:40];
+			state2 = LD_BL_4_X;
+			end 
+
+			LD_BL_4_X: begin
+			bl_4_x = data [55:48];
+			state2 = LD_BL_4_Y;
+			end 
+
+			LD_BL_4_Y: begin
+			bl_4_y = data [63:56];
+			state2 = LD_BL_5_X;
+			end 
+
+			LD_BL_5_X: begin
+			bl_4_x = data [71:64];
+			state2 = LD_BL_5_Y;
+			end 
+			LD_BL_5_Y: begin
+			bl_5_y = data [79:72];
+			state = FINISH_READING;
+			end 
+
+			FINISH_READING: begin
+			i = 1'b1;
+			end
+		endcase
+  	end
+end
+endmodule
+
+
+module read_text(reset,clock, out);
+	input  reset, clock;
+	output [79:0] out;
+	reg [79:0] x;
+    reg i;
+	reg [79:0] mem [0:159];
+
+	initial          
+		$readmemb("I:\my_data_x.txt", mem);
+
+    always@(posedge clock)
+    begin
+        if(reset)
+            begin
+                x = 0;
+				i = 0;
+            end
+        else 
+            begin
+                x = mem[i];
+                i=i+1;
+            end
+    end
+
+	assign out[79:0] = x [79:0];
+
+endmodule
