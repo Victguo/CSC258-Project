@@ -118,6 +118,7 @@ module Proj(
 						state = INIT_PADDLE;
 					end
 				end
+				// Whole lotta initialization here
 				INIT_PADDLE: begin
 					if (draw_counter < 6'b10000) begin
 						p_x = 8'd76;
@@ -171,6 +172,7 @@ module Proj(
 						state = IDLE;
 				end
 				IDLE: begin
+					// Frame is the rateDivider, when the rate divider hits 0, begin updating the game
 					if (frame)
 						state = ERASE_PADDLE;
 					end
@@ -242,7 +244,9 @@ module Proj(
 					colour = 3'b111;
 					state = UPDATE_BLOCK_1;
 				end
+				// TODO: THIS IS WHERE WE SHOULD REDRAW THE BLOCKS BY UPDATING THEIR Y COORD TO GO DOWN
 				UPDATE_BLOCK_1: begin
+					// Unit collision code
 					if ((block_1_colour != 3'b000) && (b_y > bl_1_y - 8'd1) && (b_y < bl_1_y + 8'd2) && (b_x >= bl_1_x) && (b_x <= bl_1_x + 8'd7)) begin
 						b_y_direction = ~b_y_direction;
 						block_1_colour = 3'b000;
