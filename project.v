@@ -77,6 +77,7 @@ module Proj(
 	// 1 bit flag var, to let us know when we can stop decrementing
 	reg lower_blocks;
 	reg timer_triggered;
+	reg done_lowering;
 	
 	assign LEDR[5:0] = state;
 	 
@@ -124,6 +125,7 @@ module Proj(
 			counter = 2'b00;
 			lower_blocks = 1'b0;
 			timer_triggered = 1'b0;
+			done_lowering = 1'b0;
 			if (~KEY[0]) 
 				state = RESET_BLACK;
 			// FSM
@@ -201,8 +203,10 @@ module Proj(
 						lower_blocks = 1'b1;
 						counter = counter - 1'b1;
 
-						if(counter == 1'b0)
+						if(counter == 1'b0) begin
 							timer_triggered = 1'b0;
+							done_lowering = 1'b1;
+						end
 					end
 				end
 				ERASE_PADDLE: begin
@@ -261,7 +265,7 @@ module Proj(
 					if ((b_y == 8'd0) || ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd15))) begin
 						b_y_direction = ~b_y_direction;
 
-						if((counter < 2'b11) && (timer_triggered == 1'b0))
+						if((counter < 2'b11) && (timer_triggered == 1'b0) && (!done_lowering))
 							counter = counter + 1'b1;
 						else begin
 							timer_triggered = 1'b1;
@@ -291,7 +295,7 @@ module Proj(
 						// NOTE: WITH THIS CODE, WE CAN EASILY SET UP BLOCKS TO TAKE MULTIPLE HITS, BY CHANGING THE COLOUR
 					end
 					// Trying 10 pixels for now
-					if((counter > 2'b00) && (lower_blocks == 1'b1))
+					if(lower_blocks == 1'b1)
 						bl_1_y = bl_1_y + 4'b1010;
 
 					state = DRAW_BLOCK_1;
@@ -315,7 +319,7 @@ module Proj(
 						block_2_colour = 3'b000;
 					end
 					// Trying 10 pixels for now
-					if((counter > 2'b00) && (lower_blocks == 1'b1))
+					if(lower_blocks == 1'b1)
 						bl_2_y = bl_2_y + 4'b1010;
 					state = DRAW_BLOCK_2;
 				end
@@ -337,7 +341,7 @@ module Proj(
 						block_3_colour = 3'b000;
 					end
 					// Trying 10 pixels for now
-					if((counter > 2'b00) && (lower_blocks == 1'b1))
+					if(lower_blocks == 1'b1)
 						bl_3_y = bl_3_y + 4'b1010;
 
 					state = DRAW_BLOCK_3;
@@ -360,7 +364,7 @@ module Proj(
 						block_4_colour = 3'b000;
 					end
 					// Trying 10 pixels for now
-					if((counter > 2'b00) && (lower_blocks == 1'b1))
+					if(lower_blocks == 1'b1)
 						bl_4_y = bl_4_y + 4'b1010;
 
 					state = DRAW_BLOCK_4;
@@ -383,7 +387,7 @@ module Proj(
 						block_5_colour = 3'b000;
 					end
 					// Trying 10 pixels for now
-					if((counter > 2'b00) && (lower_blocks == 1'b1))
+					if(lower_blocks == 1'b1)
 						bl_5_y = bl_5_y + 4'b1010;
 
 					state = DRAW_BLOCK_5;
