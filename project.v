@@ -58,6 +58,7 @@ module Proj(
 	 
 
 	reg [5:0] state;
+	reg [3:0] state2;
 	// Set of x and y coordinates that are directly sent to the VGA to draw/update, note that x and y have to constantly swap between
 	// paddle, ball, and blocks
 	reg [7:0] x, y;
@@ -70,7 +71,10 @@ module Proj(
 	reg [2:0] block_1_colour, block_2_colour, block_3_colour, block_4_colour, block_5_colour;
 	// Better name, or the more familiar name that we have for this is the "enable" in LAB4, is 1 when rate_divider == 0
 	wire frame;
-	
+	// store coordinates reading from text
+	reg [79:0] data;
+    reg i;
+
 	assign LEDR[5:0] = state;
 	 
 	// States in the FSM
@@ -106,6 +110,39 @@ module Proj(
 		.clock(CLOCK_50), 
 		.clk(frame)
 		);
+
+    read_text text1(
+		.clock(CLOCK_50),
+		.reset(KEY[0]),
+		.out(data)
+	);
+
+    // assign bl_1_x [7:0] = data [7:0];
+	// assign bl_1_y [7:0] = data [15:8];
+	// assign bl_2_x [7:0] = data [23:16];
+	// assign bl_2_y [7:0] = data [31:24];
+	// assign bl_3_x [7:0] = data [39:32];
+	// assign bl_3_y [7:0] = data [47:40];
+	// assign bl_4_x [7:0] = data [55:48];
+	// assign bl_4_y [7:0] = data [63:56];
+	// assign bl_5_x [7:0] = data [71:64];
+	// assign bl_5_y [7:0] = data [79:72];
+	
+   generate_new_blocks new1(x1(bl_1_x),
+	            .y1(bl_1_y),
+					.x2(bl_2_x), 
+					.y2(bl_2_y), 
+					.x3(bl_3_x), 
+					.y3(bl_3_y), 
+					.x4(bl_4_x), 
+					.y4(bl_4_y),
+					.x5(bl_5_x), 
+					.y5(bl_5_y),
+					.clock(CLOCK_50),
+					.state2(state2),
+					.i(i),
+					.data(data)
+	               );
 
 	assign LEDR[7] = ((b_y_direction) && (b_y > p_y - 8'd1) && (b_y < p_y + 8'd2) && (b_x >= p_x) && (b_x <= p_x + 8'd8));
 
@@ -315,7 +352,7 @@ module Proj(
 					end
 					else begin
 						draw_counter= 8'b00000000;
-						state = UPDATE_BLOCK_4;
+						state = UPDATE_BLOCK_4;			
 					end
 				end
 				UPDATE_BLOCK_4: begin
@@ -374,7 +411,7 @@ module clock(input clock, output clk);
 	always@(posedge clock)
     begin
         if (frame_counter == 20'b00000000000000000000) begin
-			// This is the number 833,332 - meaning with a 50MHz clock, frame is set to 1 60 times, VGA is updating at 60hz
+// This is the number 833,332 - meaning with a 50MHz clock, frame is set to 1 60 times, VGA is updating at 60hz
 			frame_counter = 20'b11001011011100110100;
 			frame = 1'b1;
 		end
@@ -386,3 +423,119 @@ module clock(input clock, output clk);
 	assign clk = frame;
 endmodule
 
+module generate_new_blocks(clock, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, state2, i, data);
+	input clock;
+	input [79:0] data;
+	input i;
+	input [3:0] state2;
+	reg [7:0] bl_1_x, bl_1_y, bl_2_x, bl_2_y, bl_3_x, bl_3_y, bl_4_x, bl_4_, bl_5_x, bl_5_y;
+	output [7:0] x1, y1, x2, y2, x3, y3, x4, y4, x5, y5;
+	// Alternative way
+    // assign bl_1_x [7:0] = data [7:0];
+	// assign bl_1_y [7:0] = data [15:8];
+	// assign bl_2_x [7:0] = data [23:16];
+	// assign bl_2_y [7:0] = data [31:24];
+	// assign bl_3_x [7:0] = data [39:32];
+	// assign bl_3_y [7:0] = data [47:40];
+	// assign bl_4_x [7:0] = data [55:48];
+	// assign bl_4_y [7:0] = data [63:56];
+	// assign bl_5_x [7:0] = data [71:64];
+	// assign bl_5_y [7:0] = data [79:72];
+	// States in the FSM
+	localparam 
+	         LD_BL_1_X = 4'b0001,
+			   LD_BL_1_Y = 4'b0010,
+			   LD_BL_2_X = 4'b0011,
+			   LD_BL_2_Y = 4'b0100,
+			   LD_BL_3_X = 4'b0101,
+			   LD_BL_3_Y = 4'b0110,
+			   LD_BL_4_X = 4'b0111,
+			   LD_BL_4_Y = 4'b1000,
+			   LD_BL_5_X = 4'b1001,
+			   LD_BL_5_Y = 4'b1010,
+	         FINISH_READING = 4'b1011;
+
+	always@(posedge clock) begin
+		if(i == 1'b0) begin
+			case (state2)
+
+				LD_BL_1_X: begin
+				  bl_1_x [7:0] = data [7:0];
+				  state2 = LD_BL_1_Y;
+				end
+
+				LD_BL_1_Y: begin 
+				  bl_1_y [7:0] = data [15:8];
+				  state2 = LD_BL_2_X;
+				end 
+
+				LD_BL_2_X: begin
+				  bl_2_x [7:0] = data [23:16];
+				  state2 = LD_BL_2_Y;
+				end
+
+				LD_BL_2_Y: begin
+				  bl_2_y [7:0] = data [31:24];
+				  state2 = LD_BL_3_X;
+				end
+
+				LD_BL_3_X: begin
+				  bl_3_x [7:0] = data [39:32];
+				  state2 = LD_BL_3_Y;
+				end 
+
+				LD_BL_3_Y: begin
+				  bl_3_y [7:0] = data [47:40];
+				  state2 = LD_BL_4_X;
+				end 
+
+				LD_BL_4_X: begin
+				  bl_4_x [7:0] = data [55:48];
+				  state2 = LD_BL_4_Y;
+				end 
+
+				LD_BL_4_Y: begin
+				  bl_4_y [7:0] = data [63:56];
+				  state2 = LD_BL_5_X;
+				end 
+
+				LD_BL_5_X: begin
+				  bl_4_x [7:0] = data [71:64];
+				  state2 = LD_BL_5_Y;
+				end 
+				
+				LD_BL_5_Y: begin
+				  bl_5_y [7:0] = data [79:72];
+				  state2 = FINISH_READING;
+				end 
+
+				FINISH_READING: begin
+				  i = 1'b1;
+				end
+			endcase
+		end
+	end
+	assign x1[7:0] = bl_1_x[7:0];
+	assign y1[7:0] = bl_1_y[7:0];
+	assign x2[7:0] = bl_2_x[7:0];
+	assign y2[7:0] = bl_2_y[7:0];
+	assign x3[7:0] = bl_3_x[7:0];
+	assign y3[7:0] = bl_3_y[7:0];
+	assign x4[7:0] = bl_4_x[7:0];
+	assign y4[7:0] = bl_4_y[7:0];
+	assign x5[7:0] = bl_5_x[7:0];
+	assign y5[7:0] = bl_5_y[7:0];
+endmodule
+
+module read_text(reset, clock, out);
+	input reset, clock;
+	output [79:0] out;
+    reg i = 0;
+	reg [79:0] mem [0:158];
+
+	initial
+	begin
+		$readmemb("my_data.txt", mem);
+    end
+	assign out[79:0] = mem[79:0];
+endmodule
